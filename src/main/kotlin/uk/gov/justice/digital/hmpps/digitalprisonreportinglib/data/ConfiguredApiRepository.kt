@@ -40,7 +40,7 @@ class ConfiguredApiRepository {
         buildFiltersQuery(filters),
         buildPaginationQuery(dynamicFilterFieldId, sortColumn, sortedAsc, pageSize, selectedPage),
       ),
-      buildPreparedStatementNamedParams(filters, query, policyEngineResult, dynamicFilterFieldId, sortColumn, selectedPage, pageSize),
+      buildPreparedStatementNamedParams(filters),
     )
       .map {
         transformTimestampToLocalDateTime(it)
@@ -49,8 +49,8 @@ class ConfiguredApiRepository {
     log.debug("Query Execution time in ms: {}", stopwatch.time)
     return result
   }
-  private fun buildReportQuery(query: String) = """WITH $STAGE_1 AS (:query)"""
-  private fun buildPolicyQuery(policyEngineResult: String) = """$STAGE_2 AS (SELECT * FROM $STAGE_1 WHERE :policyEngineResult)"""
+  private fun buildReportQuery(query: String) = """WITH $STAGE_1 AS ($query)"""
+  private fun buildPolicyQuery(policyEngineResult: String) = """$STAGE_2 AS (SELECT * FROM $STAGE_1 WHERE $policyEngineResult)"""
   private fun buildFiltersQuery(filters: List<Filter>) =
     """$STAGE_3 AS (SELECT * FROM $STAGE_2 WHERE ${buildFiltersWhereClause(filters)})"""
   private fun buildPaginationQuery(
@@ -61,10 +61,10 @@ class ConfiguredApiRepository {
     selectedPage: Long,
   ) = """SELECT ${constructProjectedColumns(dynamicFilterFieldId)}
         FROM stage_3 ${buildOrderByClause(sortColumn, sortedAsc)} 
-        limit :pageSize OFFSET (:selectedPage - 1) * :pageSize;"""
+        limit $pageSize OFFSET ($selectedPage - 1) * $pageSize;"""
 
   private fun buildOrderByClause(sortColumn: String?, sortedAsc: Boolean) =
-    sortColumn?.let { """ORDER BY :sortColumn ${calculateSortingDirection(sortedAsc)}""" } ?: ""
+    sortColumn?.let { """ORDER BY $sortColumn ${calculateSortingDirection(sortedAsc)}""" } ?: ""
 
   private fun buildFinalQuery(
     reportQuery: String,
@@ -78,7 +78,7 @@ class ConfiguredApiRepository {
   }
 
   private fun constructProjectedColumns(dynamicFilterFieldId: String?) =
-    dynamicFilterFieldId?.let { "DISTINCT :dynamicFilterFieldId" } ?: "*"
+    dynamicFilterFieldId?.let { "DISTINCT $dynamicFilterFieldId" } ?: "*"
 
   fun count(
     filters: List<Filter>,
@@ -93,7 +93,7 @@ class ConfiguredApiRepository {
         buildFiltersQuery(filters),
         "SELECT COUNT(1) as total FROM $STAGE_3",
       ),
-      buildPreparedStatementNamedParams(filters, query, policyEngineResult),
+      buildPreparedStatementNamedParams(filters),
     ).first()?.get("total") as Long
   }
 
@@ -111,22 +111,8 @@ class ConfiguredApiRepository {
     return filters.joinToString(" AND ", transform = this::buildCondition).ifEmpty { "TRUE" }
   }
 
-  fun buildPreparedStatementNamedParams(
-    filters: List<Filter>,
-    query: String,
-    policyEngineResult: String,
-    dynamicFilterFieldId: String? = null,
-    sortColumn: String? = null,
-    selectedPage: Long? = null,
-    pageSize: Long? = null
-  ): MapSqlParameterSource {
+  fun buildPreparedStatementNamedParams(filters: List<Filter>): MapSqlParameterSource {
     val preparedStatementNamedParams = MapSqlParameterSource()
-    preparedStatementNamedParams.addValue("query", query)
-    preparedStatementNamedParams.addValue("policyEngineResult", policyEngineResult)
-    dynamicFilterFieldId?.let { preparedStatementNamedParams.addValue("dynamicFilterFieldId", dynamicFilterFieldId) }
-    sortColumn?.let { preparedStatementNamedParams.addValue("sortColumn", sortColumn) }
-    selectedPage?.let {preparedStatementNamedParams.addValue("selectedPage", selectedPage) }
-    pageSize?.let {preparedStatementNamedParams.addValue("pageSize", pageSize) }
     filters.forEach { preparedStatementNamedParams.addValue(it.getKey(), it.value.lowercase()) }
     return preparedStatementNamedParams
   }
