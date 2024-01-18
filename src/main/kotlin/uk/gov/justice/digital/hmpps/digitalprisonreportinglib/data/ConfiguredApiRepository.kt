@@ -114,17 +114,19 @@ class ConfiguredApiRepository {
   fun buildPreparedStatementNamedParams(filters: List<Filter>): MapSqlParameterSource {
     val preparedStatementNamedParams = MapSqlParameterSource()
     filters.forEach { preparedStatementNamedParams.addValue(it.getKey(), it.value.lowercase()) }
+    filters.forEach { preparedStatementNamedParams.addValue("${it.field}zzz", it.field) }
     return preparedStatementNamedParams
   }
 
   private fun buildCondition(filter: Filter): String {
-    val lowerCaseField = "lower(${filter.field})"
+//    trim('"' FROM x::text)
+    val lowerCaseField = "lower(trim(both '\"' FROM :${filter.field}zzz))"
     val key = filter.getKey()
 
     return when (filter.type) {
       FilterType.STANDARD -> "$lowerCaseField = :$key"
       FilterType.RANGE_START -> "$lowerCaseField >= :$key"
-      FilterType.DATE_RANGE_START -> "${filter.field} >= CAST(:$key AS timestamp)"
+      FilterType.DATE_RANGE_START -> ":${filter.field}zzz >= CAST(:$key AS timestamp)"
       FilterType.RANGE_END -> "$lowerCaseField <= :$key"
       FilterType.DATE_RANGE_END -> "${filter.field} < (CAST(:$key AS timestamp) + INTERVAL '1' day)"
       FilterType.DYNAMIC -> "${filter.field} LIKE '${filter.value}%'"
