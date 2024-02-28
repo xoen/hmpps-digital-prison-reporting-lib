@@ -41,5 +41,5 @@ jobs:
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
         run: |
           ORG_GRADLE_PROJECT_signingKey=$(echo -e "$ORG_GRADLE_PROJECT_signingKey")
-          ./gradlew -Pversion=3.2.3 publishToSonatype closeAndReleaseSonatypeStagingRepository
+          ./gradlew -Dversion=3.2.3 publishToSonatype closeAndReleaseSonatypeStagingRepository
 
