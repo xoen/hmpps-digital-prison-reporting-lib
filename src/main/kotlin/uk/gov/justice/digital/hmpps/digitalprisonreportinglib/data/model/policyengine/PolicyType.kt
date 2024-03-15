@@ -1,6 +1,10 @@
 package uk.gov.justice.digital.hmpps.digitalprisonreportinglib.data.model.policyengine
 
-enum class PolicyType(val type: String) {
-  ROW_LEVEL("row-level"),
-  ACCESS("access"),
+import com.google.gson.annotations.SerializedName
+
+enum class PolicyType {
+  @SerializedName("row-level")
+  ROW_LEVEL,
+  @SerializedName("access")
+  ACCESS,
 }

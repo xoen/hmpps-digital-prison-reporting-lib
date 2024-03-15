@@ -1,10 +1,14 @@
 package uk.gov.justice.digital.hmpps.digitalprisonreportinglib.data.model
 
-import com.fasterxml.jackson.annotation.JsonValue
+import com.google.gson.annotations.SerializedName
 
-enum class ParameterType(@JsonValue val type: kotlin.String) {
-  String("string"),
-  Date("date"),
-  Long("long"),
-  Time("time"),
+enum class ParameterType {
+  @SerializedName("string")
+  String,
+  @SerializedName("date")
+  Date,
+  @SerializedName("long")
+  Long,
+  @SerializedName("time")
+  Time,
 }
